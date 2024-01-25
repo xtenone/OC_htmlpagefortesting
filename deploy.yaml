@@ -1,0 +1,82 @@
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: html2-simpleserver
+  annotations: {}
+spec:
+  selector:
+    matchLabels:
+      app: html2
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        app: html2
+    spec:
+      containers:
+        - name: html2-container
+          image: quay.io/fedora/python-310:latest
+          ports:
+            - containerPort: 8000
+              protocol: TCP
+          command:
+            - /bin/sh
+            - -c
+            - |
+              mkdir tryfiles
+              cd tryfiles
+              touch index.html
+
+              cat << EOF > index.html
+              <!DOCTYPE html>
+              <html lang="en">
+              <head>
+                  <meta charset="UTF-8">
+                  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+                  <title>Document</title>
+              </head>
+              <body>
+                  voorbeeld tekst
+              </body>
+              </html>
+              EOF
+
+              python -m http.server
+          env: []
+      imagePullSecrets: []
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 25%
+      maxUnavailable: 25%
+  paused: false
+
+---
+
+kind: Service
+apiVersion: v1
+metadata:
+  name: html2-simpleserver
+spec:
+  ports:
+    - protocol: TCP
+      port: 8000
+      targetPort: 8000
+  selector:
+    app: html2
+
+---
+
+kind: Route
+apiVersion: route.openshift.io/v1
+metadata:
+  name: html2-simpleserver
+spec:
+  to:
+    kind: Service
+    name: html2-simpleserver
+    weight: 100
+  port:
+    targetPort: 8000
+  wildcardPolicy: None
